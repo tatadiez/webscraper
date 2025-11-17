@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scraper de Noticias</title>
+  <title>Scraper de Noticias (Worker)</title>
   <style>
     body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
     input, button { padding: 8px; font-size: 16px; margin-right: 5px; }
@@ -13,7 +13,7 @@
 </head>
 <body>
   <h1>Scraper de noticias (Worker)</h1>
-  <p>Pegá la URL del sitio de noticias que quieras scrapear.</p>
+  <p>Pegá la URL del sitio de noticias que quieras scrapear. Funciona solo con sitios que cargan titulares en el HTML inicial.</p>
 
   <input id="url" type="text" placeholder="https://www.ejemplo.com" style="width: 70%;" />
   <button onclick="scrapear()">Scrapear</button>
@@ -36,7 +36,6 @@ async function scrapear() {
   if (!url) return alert('Pegá una URL');
 
   try {
-    // Usando Cloudflare Worker como proxy para evitar CORS
     const proxyUrl = `https://curly-hill-d8ab.adiez.workers.dev/?url=${encodeURIComponent(url)}`;
     const respuesta = await fetch(proxyUrl);
     const html = await respuesta.text();
@@ -44,7 +43,6 @@ async function scrapear() {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // Selector genérico para titulares estáticos
     const candidatos = [...doc.querySelectorAll('h1, h2, h3, article a')]
       .map(el => {
         if(el.tagName.toLowerCase() === 'a') {
@@ -54,22 +52,25 @@ async function scrapear() {
           return a ? { titulo: a.innerText.trim(), link: a.href } : null;
         }
       })
-      .filter(n => n && n.titulo.length > 20); // filtramos textos muy cortos
+      .filter(n => n && n.titulo.length > 20);
 
     notasGlobal = candidatos;
 
-    contador.textContent = `Notas encontradas: ${notasGlobal.length}`;
-
-    notasGlobal.forEach(n => {
-      const div = document.createElement('div');
-      div.className = 'nota';
-      div.innerHTML = `<a href="${n.link}" target="_blank">${n.titulo}</a>`;
-      resultadosDiv.appendChild(div);
-    });
+    if(notasGlobal.length === 0) {
+      contador.textContent = 'No se encontraron titulares en el HTML inicial. Es posible que el sitio use JavaScript para cargar noticias.';
+    } else {
+      contador.textContent = `Notas encontradas: ${notasGlobal.length}`;
+      notasGlobal.forEach(n => {
+        const div = document.createElement('div');
+        div.className = 'nota';
+        div.innerHTML = `<a href="${n.link}" target="_blank">${n.titulo}</a>`;
+        resultadosDiv.appendChild(div);
+      });
+    }
 
   } catch (e) {
     console.error(e);
-    alert('No se pudo scrapear la página. Puede ser un sitio dinámico que no soporta este método.');
+    alert('No se pudo scrapear la página. Verifica la URL o que el sitio permita fetch desde otros dominios.');
   }
 }
 
