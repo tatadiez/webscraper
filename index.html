@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scraper de Noticias</title>
+<style>
+body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
+input, button { padding: 8px; font-size: 16px; margin-right: 5px; }
+#resultados { margin-top: 20px; }
+.nota { padding: 6px 0; border-bottom: 1px solid #ddd; }
+</style>
+</head>
+<body>
+<h1>Scraper de noticias</h1>
+<p>Pegá la URL del sitio de noticias que quieras scrapear.</p>
+
+
+<input id="url" type="text" placeholder="https://www.ejemplo.com" style="width: 70%;" />
+<button onclick="scrapear()">Scrapear</button>
+<button onclick="exportCSV()">Exportar CSV</button>
+
+
+<h3 id="contador"></h3>
+<div id="resultados"></div>
+
+
+<script>
+let notasGlobal = [];
+
+
+async function scrapear() {
+const url = document.getElementById('url').value.trim();
+const resultadosDiv = document.getElementById('resultados');
+const contador = document.getElementById('contador');
+resultadosDiv.innerHTML = '';
+contador.textContent = '';
+notasGlobal = [];
+
+
+if (!url) return alert('Pegá una URL');
+
+
+try {
+// Backend Puppeteer: API que renderiza JavaScript y devuelve artículos en JSON
+const backendApi = `https://tu-backend-scraper.com/api?url=${encodeURIComponent(url)}`;
+const respuesta = await fetch(backendApi);
+
+
+if (!respuesta.ok) throw new Error('Error al conectar con el backend');
+
+
+const datos = await respuesta.json(); // Espera un array de {titulo, link}
+notasGlobal = datos;
+
+
+contador.textContent = `Notas encontradas: ${notasGlobal.length}`;
+
+
+notasGlobal.forEach(n => {
+const div = document.createElement('div');
+div.className = 'nota';
+div.innerHTML = `<a href="${n.link}" target="_blank">${n.titulo}</a>`;
+resultadosDiv.appendChild(div);
+});
+
+
+} catch (e) {
+console.error(e);
+alert('No se pudo scrapear la página. Asegurate que el backend esté corriendo.');
+}
+}
+
+
+function exportCSV() {
+if (notasGlobal.length === 0) return alert('No hay notas para exportar.');
+
+
+const csvContent = 'data:text/csv;charset=utf-8,' + notasGlobal.map(n => `"${n.titulo.replace(/"/g,'""')}","${n.link}"`).join('\n');
+const encodedUri = encodeURI(csvContent);
+const link = document.createElement('a');
+link.setAttribute('href', encodedUri);
+link.setAttribute('download', 'notas_scrapeadas.csv');
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+}
+</script>
+</body>
+</html>
